@@ -1,0 +1,19 @@
+{
+  "name": "md2pdf",
+  "version": "1.1.2",
+  "description": "Obsidian plugin to convert Markdown to PDF",
+  "main": "main.js",
+  "scripts": {
+    "build": "tsc --noEmit --skipLibCheck && esbuild main.ts --bundle --external:obsidian --external:electron --external:@codemirror/* --external:@lezer/* --platform=node --target=es2018 --format=cjs --outfile=main.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.21.0",
+    "obsidian": "latest",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "adm-zip": "^0.5.16"
+  }
+}

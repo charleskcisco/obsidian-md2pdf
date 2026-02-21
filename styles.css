@@ -1,0 +1,23 @@
+/* MD2PDF Plugin Styles */
+
+.md2pdf-settings h3 {
+	margin-top: 24px;
+	margin-bottom: 12px;
+}
+
+.md2pdf-settings ul {
+	padding-left: 20px;
+	margin: 8px 0;
+}
+
+.md2pdf-settings li {
+	margin: 4px 0;
+}
+
+.md2pdf-settings a {
+	color: var(--text-accent);
+}
+
+.md2pdf-settings a:hover {
+	color: var(--text-accent-hover);
+}

@@ -1,0 +1,9 @@
+{
+	"id": "md2pdf",
+	"name": "md2pdf",
+	"version": "1.1.2",
+	"minAppVersion": "0.15.0",
+	"description": "Convert Markdown files to PDF using Pandoc and LibreOffice with flexible style (chicago/mla) and spacing document selection.",
+	"author": "Charles Cisco",
+	"isDesktopOnly": true
+}
