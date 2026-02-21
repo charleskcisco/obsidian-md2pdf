@@ -187,7 +187,7 @@ export default class MD2PDFPlugin extends Plugin {
 	// Get plugin folder path
 	getPluginFolder(): string {
 		const vaultPath = (this.app.vault.adapter as any).basePath;
-		return path.join(vaultPath, '.obsidian', 'plugins', 'md2pdf');
+		return path.join(vaultPath, this.app.vault.configDir, 'plugins', this.manifest.id);
 	}
 
 	// Get list of available reference.docx files in plugin folder

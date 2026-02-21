@@ -2840,7 +2840,7 @@ var MD2PDFPlugin = class extends import_obsidian.Plugin {
   // Get plugin folder path
   getPluginFolder() {
     const vaultPath = this.app.vault.adapter.basePath;
-    return path.join(vaultPath, ".obsidian", "plugins", "md2pdf");
+    return path.join(vaultPath, this.app.vault.configDir, "plugins", this.manifest.id);
   }
   // Get list of available reference.docx files in plugin folder
   getAvailableRefDocs() {
