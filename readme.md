@@ -1,140 +1,142 @@
-# MD to PDF - Obsidian Plugin
+# MD to PDF — Obsidian Plugin
 
-Convert Markdown files to beautifully styled PDF documents using Pandoc and LibreOffice.
+Convert Markdown files to styled PDF documents using Pandoc and LibreOffice. Supports MLA and Chicago/Turabian formatting via YAML frontmatter.
 
 ## Features
 
-- **Multiple Class Formats**: Different formatting styles for different classes (Chicago/Turabian, MLA, etc.)
-- **Reference Document Styling**: Use custom DOCX templates for styling
-- **Title Page**: Automatically creates a title page with author, date, and instructor
-- **MLA Header**: Generates proper MLA-style headers for class assignments
-- **Automatic Bibliography Detection**: Enables Pandoc's citeproc when bibliography is detected
-- **Page Breaks**: Automatically inserts page breaks before Bibliography/References sections
-- **Cross-Platform**: Works on Linux, macOS, and Windows
-- **Auto-Detection**: Automatically finds Pandoc and LibreOffice installations
+- **MLA & Chicago/Turabian styles**: Automatically generates the correct header or cover page from YAML frontmatter
+- **Custom reference documents**: Control fonts, margins, and line spacing using `.docx` templates
+- **Auto-detect bibliography**: Enables Pandoc's `citeproc` when a `bibliography:` field is found
+- **Page breaks**: Automatically inserts page breaks before Bibliography/References/Works Cited sections
+- **Configurable output locations**: Save PDFs and intermediate `.docx` files to custom folders
+- **Cross-platform**: Works on macOS, Linux, and Windows
+- **Auto-detection**: Finds Pandoc and LibreOffice automatically on first load
 
 ## Prerequisites
 
-### 1. Pandoc
+### Pandoc
 
-- **Windows**: Download from [pandoc.org/installing.html](https://pandoc.org/installing.html)
 - **macOS**: `brew install pandoc`
 - **Linux**: `sudo apt install pandoc`
+- **Windows**: Download from [pandoc.org/installing.html](https://pandoc.org/installing.html)
 
-### 2. LibreOffice
+### LibreOffice
 
-- **Windows/macOS**: Download from [libreoffice.org](https://www.libreoffice.org/download/)
+- **macOS/Windows**: Download from [libreoffice.org](https://www.libreoffice.org/download/)
 - **Linux**: `sudo apt install libreoffice`
 
 ## Installation
 
-1. Download the plugin ZIP file
-2. Extract to `.obsidian/plugins/md2pdf/` in your vault
-3. Enable the plugin in Obsidian Settings → Community plugins
+1. Download the plugin files (`main.js`, `manifest.json`, `styles.css`)
+2. Copy them to `.obsidian/plugins/obsidian-md2pdf/` inside your vault
+3. Enable the plugin in **Settings → Community plugins**
 
-## Class Formats
+## Usage
 
-The plugin supports multiple formatting styles. Set the format using `class:` in your YAML frontmatter.
+### Command Palette
 
-### 12th Grade—Thesis (`class: 12-thesis`)
+1. Open a Markdown file
+2. Press `Cmd+P` (macOS) or `Ctrl+P` (Windows/Linux)
+3. Run **Convert current Markdown to PDF**
 
-Chicago/Turabian format. Creates a title page with:
-- Title centered at top
-- Author and date at bottom
-- "Submitted to" before instructor name
-- Page break before content
+### Ribbon Icon
+
+Click the document icon in the left sidebar ribbon.
+
+## YAML Frontmatter
+
+Control the document style and template via frontmatter fields.
+
+### `style` — document structure
+
+| Value | Description |
+|-------|-------------|
+| `chicago` | Turabian-style cover page: title centered ~1/3 down, author/course/instructor/date in the bottom half |
+| `mla` | MLA-style info block: author, instructor, course, date left-aligned at top, then centered title |
+| *(omitted)* | Plain document — no special header or cover page |
+
+### `spacing` — typography template
+
+Place `.docx` reference files in the plugin folder (`.obsidian/plugins/obsidian-md2pdf/`) and reference them by filename without the extension.
 
 ```yaml
----
-title: The Case for Taco Tuesday as a Weekly National Holiday
-author: Your Name
-date: 2025-12-04
-teacher: Dr. Cisco
-class: 12-thesis
-bibliography: references.bib
----
-
-Your content starts here...
+spacing: double   # uses double.docx
+spacing: single   # uses single.docx
 ```
 
-### 12th Grade—Modern Literature (`class: 12-literature`)
+The reference document controls fonts, margins, line spacing, and running headers/footers.
 
-MLA format. Creates a double-spaced header on the first page:
-- Your name
-- Date (formatted as "Month DD, YYYY")
-- Class name
-- Teacher name
-- Centered title
+### Full YAML Examples
 
+**Chicago/Turabian cover page:**
 ```yaml
 ---
-title: Analysis of The Great Gatsby
-author: Your Name
-date: 2025-12-04
-teacher: Mrs. Greb
-class: 12-literature
+title: My Thesis Title
+author: Jane Smith
+course: English 401
+instructor: Dr. Johnson
+date: 2026-03-07
+style: chicago
+spacing: double
 bibliography: references.bib
 ---
-
-Your content starts here...
 ```
 
-### 12th Grade—Modern History (`class: 12-history`)
-
-Same as Literature but with "12th Grade Modern History" as the class name.
-
+**MLA header:**
 ```yaml
 ---
-title: The Causes of World War I
-author: Your Name
-date: 2025-12-04
-teacher: Mr. Johnson
-class: 12-history
-bibliography: references.bib
+title: Literary Analysis of The Great Gatsby
+author: Jane Smith
+instructor: Mrs. Williams
+course: 12th Grade Literature
+date: 2026-03-07
+style: mla
+spacing: double
 ---
+```
 
-Your content starts here...
+**Plain document:**
+```yaml
+---
+title: Quick Notes
+spacing: single
+---
 ```
 
 ## Configuration
 
-Go to **Settings → MD to PDF** to configure:
+Go to **Settings → md2pdf** to configure:
 
 | Setting | Description |
 |---------|-------------|
-| **Default Class Format** | Format to use when no `class:` is specified |
+| **Default Reference Document** | Template to use when no `spacing:` is set in YAML |
+| **Refresh Reference Documents** | Rescan the plugin folder for `.docx` files |
 | **Pandoc Path** | Auto-detected, or set manually |
 | **LibreOffice Path** | Auto-detected, or set manually |
-| **Custom Pandoc Arguments** | Additional arguments to pass to pandoc |
-| **Override reference.docx** | Override all formats with a custom template |
-| **Auto-detect Bibliography** | Enable citeproc when `bibliography:` is found |
-| **Delete Intermediate .docx** | Clean up temp files after conversion |
+| **Auto-detect Paths** | Re-run auto-detection (clears current paths first) |
+| **Custom Pandoc Arguments** | Additional arguments to pass to pandoc (space-separated) |
+| **Auto-detect Bibliography** | Enable citeproc automatically when `bibliography:` is in frontmatter |
+| **Delete Intermediate .docx** | Remove the temporary `.docx` file after PDF is created |
+| **PDF Output Location** | Where to save PDFs — leave empty for same folder as source, or set a vault-relative or absolute path |
+| **DOCX Output Location** | Where to save intermediate `.docx` files when not deleted |
 
-## Usage
+## Adding Reference Documents
 
-### Method 1: Command Palette
-1. Open a Markdown file
-2. Press `Ctrl+P` (Windows/Linux) or `Cmd+P` (macOS)
-3. Type "MD to PDF" and select:
-   - **Convert current Markdown to PDF** — uses class from YAML
-   - **Convert to PDF (select class format)** — choose format from dropdown
+Place any `.docx` file into `.obsidian/plugins/obsidian-md2pdf/`. The filename (without extension) is used as the `spacing` value in your frontmatter. Running headers/footers in the reference doc can use the `{{LASTNAME}}` placeholder, which is replaced automatically from the `author` field.
 
-### Method 2: Ribbon Icon
-Click the document icon in the left ribbon.
+Click **Refresh Reference Documents** in settings after adding new files.
 
 ## Troubleshooting
 
-### "Pandoc not found"
-- Windows: `where pandoc`
-- macOS/Linux: `which pandoc`
-- Enter the path manually in settings
+### "Pandoc not found" / "LibreOffice not found"
 
-### "LibreOffice not found"
-- Windows: Usually `C:\Program Files\LibreOffice\program\soffice.exe`
-- macOS: `/Applications/LibreOffice.app/Contents/MacOS/soffice`
-- Linux: `/usr/bin/libreoffice`
+Use **Auto-detect** in settings, or find the path manually:
+
+- macOS/Linux: `which pandoc`, `which libreoffice`
+- Windows: `where pandoc`, `where soffice`
+
+Then paste the path into the appropriate field in plugin settings.
 
 ### Conversion fails
-- Press `Ctrl+Shift+I` to open developer console
-- Check for error messages
 
+Open the developer console (`Ctrl+Shift+I` / `Cmd+Option+I`) and check for error messages in the Console tab.
