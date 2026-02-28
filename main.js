@@ -3149,6 +3149,14 @@ local function is_bib_heading(block)
   if block.t ~= "Header" then return false end
   local text = pandoc.utils.stringify(block)
   return text:match("Bibliography") or text:match("References") or text:match("Works Cited")
+end
+
+local function is_refs_div(block)
+  if block.t ~= "Div" then return false end
+  for _, cls in ipairs(block.classes) do
+    if cls == "references" or cls == "csl-bib-body" then return true end
+  end
+  return false
 end`;
   }
   generateBasicFilter() {
@@ -3174,6 +3182,18 @@ function Pandoc(doc)
       table.insert(new_blocks, block)
     elseif in_bib and block.t == "Para" then
       table.insert(new_blocks, bib_entry_block(block))
+    elseif (in_bib or is_refs_div(block)) and block.t == "Div" then
+      for _, inner in ipairs(block.content) do
+        if inner.t == "Div" then
+          for _, b in ipairs(inner.content) do
+            if b.t == "Para" then
+              table.insert(new_blocks, bib_entry_block(b))
+            end
+          end
+        elseif inner.t == "Para" then
+          table.insert(new_blocks, bib_entry_block(inner))
+        end
+      end
     else
       table.insert(new_blocks, block)
     end
@@ -3213,23 +3233,6 @@ local function format_date(date_str)
     end
   end
   return date_str
-end
-
-function Header(el)
-  local text = pandoc.utils.stringify(el)
-  if text:match("Bibliography") or text:match("References") or text:match("Works Cited") then
-    return pandoc.RawBlock('openxml', string.format([[
-<w:p>
-  <w:pPr>
-    <w:pStyle w:val="Heading%d"/>
-    <w:pageBreakBefore/>
-  </w:pPr>
-  <w:r>
-    <w:t>%s</w:t>
-  </w:r>
-</w:p>]], el.level, text))
-  end
-  return el
 end
 
 function Meta(meta)
@@ -3378,6 +3381,18 @@ function Pandoc(doc)
       table.insert(new_blocks, block)
     elseif in_bib and block.t == "Para" then
       table.insert(new_blocks, bib_entry_block(block))
+    elseif (in_bib or is_refs_div(block)) and block.t == "Div" then
+      for _, inner in ipairs(block.content) do
+        if inner.t == "Div" then
+          for _, b in ipairs(inner.content) do
+            if b.t == "Para" then
+              table.insert(new_blocks, bib_entry_block(b))
+            end
+          end
+        elseif inner.t == "Para" then
+          table.insert(new_blocks, bib_entry_block(inner))
+        end
+      end
     else
       if not page_break_inserted then
         -- Insert page break before first real content block
@@ -3447,23 +3462,6 @@ local function format_date(date_str)
     end
   end
   return date_str
-end
-
-function Header(el)
-  local text = pandoc.utils.stringify(el)
-  if text:match("Bibliography") or text:match("References") or text:match("Works Cited") then
-    return pandoc.RawBlock('openxml', string.format([[
-<w:p>
-  <w:pPr>
-    <w:pStyle w:val="Heading%d"/>
-    <w:pageBreakBefore/>
-  </w:pPr>
-  <w:r>
-    <w:t>%s</w:t>
-  </w:r>
-</w:p>]], el.level, text))
-  end
-  return el
 end
 
 function Meta(meta)
@@ -3584,11 +3582,23 @@ function Pandoc(doc)
       table.insert(new_blocks, block)
     elseif in_bib and block.t == "Para" then
       table.insert(new_blocks, bib_entry_block(block))
+    elseif (in_bib or is_refs_div(block)) and block.t == "Div" then
+      for _, inner in ipairs(block.content) do
+        if inner.t == "Div" then
+          for _, b in ipairs(inner.content) do
+            if b.t == "Para" then
+              table.insert(new_blocks, bib_entry_block(b))
+            end
+          end
+        elseif inner.t == "Para" then
+          table.insert(new_blocks, bib_entry_block(inner))
+        end
+      end
     else
       table.insert(new_blocks, block)
     end
   end
-  
+
   doc.blocks = new_blocks
   return doc
 end`;
