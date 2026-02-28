@@ -525,12 +525,75 @@ export default class MD2PDFPlugin extends Plugin {
 		}
 	}
 
+	luaBibHelpers(): string {
+		return `local function escape_xml(s)
+  s = s:gsub("&", "&amp;")
+  s = s:gsub("<", "&lt;")
+  s = s:gsub(">", "&gt;")
+  return s
+end
+
+local function inlines_to_openxml(inlines)
+  local runs = {}
+  for _, inl in ipairs(inlines) do
+    if inl.t == "Emph" then
+      local txt = escape_xml(pandoc.utils.stringify(inl))
+      table.insert(runs, string.format(
+        '<w:r><w:rPr><w:i/><w:iCs/></w:rPr><w:t xml:space="preserve">%s</w:t></w:r>', txt))
+    elseif inl.t == "Strong" then
+      local txt = escape_xml(pandoc.utils.stringify(inl))
+      table.insert(runs, string.format(
+        '<w:r><w:rPr><w:b/><w:bCs/></w:rPr><w:t xml:space="preserve">%s</w:t></w:r>', txt))
+    elseif inl.t == "Str" then
+      table.insert(runs, string.format(
+        '<w:r><w:t xml:space="preserve">%s</w:t></w:r>', escape_xml(inl.text)))
+    elseif inl.t == "Space" then
+      table.insert(runs, '<w:r><w:t xml:space="preserve"> </w:t></w:r>')
+    elseif inl.t == "SoftBreak" or inl.t == "LineBreak" then
+      table.insert(runs, '<w:r><w:t xml:space="preserve"> </w:t></w:r>')
+    elseif inl.t == "Link" then
+      local txt = escape_xml(pandoc.utils.stringify(inl))
+      table.insert(runs, string.format(
+        '<w:r><w:t xml:space="preserve">%s</w:t></w:r>', txt))
+    else
+      local txt = escape_xml(pandoc.utils.stringify(inl))
+      if txt ~= "" then
+        table.insert(runs, string.format(
+          '<w:r><w:t xml:space="preserve">%s</w:t></w:r>', txt))
+      end
+    end
+  end
+  return table.concat(runs)
+end
+
+local function bib_entry_block(block)
+  local runs_xml = inlines_to_openxml(block.content)
+  return pandoc.RawBlock('openxml', string.format([[
+<w:p>
+  <w:pPr>
+    <w:spacing w:after="0" w:line="480" w:lineRule="auto"/>
+    <w:ind w:left="720" w:hanging="720"/>
+  </w:pPr>
+  %s
+</w:p>]], runs_xml))
+end
+
+local function is_bib_heading(block)
+  if block.t ~= "Header" then return false end
+  local text = pandoc.utils.stringify(block)
+  return text:match("Bibliography") or text:match("References") or text:match("Works Cited")
+end`;
+	}
+
 	generateBasicFilter(): string {
-		return `function Header(el)
-  local text = pandoc.utils.stringify(el)
-  if text:match("Bibliography") or text:match("References") or text:match("Works Cited") then
-    -- Insert page break before bibliography heading
-    return pandoc.RawBlock('openxml', string.format([[
+		return `${this.luaBibHelpers()}
+function Pandoc(doc)
+  local new_blocks = {}
+  local in_bib = false
+  for i, block in ipairs(doc.blocks) do
+    if is_bib_heading(block) then
+      in_bib = true
+      table.insert(new_blocks, pandoc.RawBlock('openxml', string.format([[
 <w:p>
   <w:pPr>
     <w:pStyle w:val="Heading%d"/>
@@ -539,9 +602,18 @@ export default class MD2PDFPlugin extends Plugin {
   <w:r>
     <w:t>%s</w:t>
   </w:r>
-</w:p>]], el.level, text))
+</w:p>]], block.level, pandoc.utils.stringify(block))))
+    elseif in_bib and block.t == "Header" then
+      in_bib = false
+      table.insert(new_blocks, block)
+    elseif in_bib and block.t == "Para" then
+      table.insert(new_blocks, bib_entry_block(block))
+    else
+      table.insert(new_blocks, block)
+    end
   end
-  return el
+  doc.blocks = new_blocks
+  return doc
 end`;
 	}
 
@@ -553,7 +625,8 @@ end`;
 		const instructor = (yaml['instructor'] || '').replace(/"/g, '\\"');
 		const date = (yaml['date'] || '').replace(/"/g, '\\"');
 		
-		return `-- Cover page format (Turabian style)
+		return `${this.luaBibHelpers()}
+-- Cover page format (Turabian style)
 -- Title centered 1/3 down the page
 -- Author, course, date centered in bottom half
 
@@ -720,29 +793,52 @@ function Pandoc(doc)
   
   -- Add all original content blocks, with page break before the first one
   local page_break_inserted = false
+  local in_bib = false
   for i, block in ipairs(doc.blocks) do
-    if not page_break_inserted then
-      -- Insert page break before first real content block
-      if block.t == "Header" or 
-         (block.t == "Para" and #block.content > 0) or
-         block.t == "CodeBlock" or
-         block.t == "BulletList" or
-         block.t == "OrderedList" or
-         block.t == "Table" or
-         block.t == "BlockQuote" or
-         block.t == "RawBlock" then
-        table.insert(new_blocks, pandoc.RawBlock('openxml', [[
+    if is_bib_heading(block) then
+      in_bib = true
+      if not page_break_inserted then
+        page_break_inserted = true
+      end
+      table.insert(new_blocks, pandoc.RawBlock('openxml', string.format([[
+<w:p>
+  <w:pPr>
+    <w:pStyle w:val="Heading%d"/>
+    <w:pageBreakBefore/>
+  </w:pPr>
+  <w:r>
+    <w:t>%s</w:t>
+  </w:r>
+</w:p>]], block.level, pandoc.utils.stringify(block))))
+    elseif in_bib and block.t == "Header" then
+      in_bib = false
+      table.insert(new_blocks, block)
+    elseif in_bib and block.t == "Para" then
+      table.insert(new_blocks, bib_entry_block(block))
+    else
+      if not page_break_inserted then
+        -- Insert page break before first real content block
+        if block.t == "Header" or
+           (block.t == "Para" and #block.content > 0) or
+           block.t == "CodeBlock" or
+           block.t == "BulletList" or
+           block.t == "OrderedList" or
+           block.t == "Table" or
+           block.t == "BlockQuote" or
+           block.t == "RawBlock" then
+          table.insert(new_blocks, pandoc.RawBlock('openxml', [[
 <w:p>
   <w:pPr>
     <w:pageBreakBefore/>
   </w:pPr>
 </w:p>]]))
-        page_break_inserted = true
+          page_break_inserted = true
+        end
       end
+      table.insert(new_blocks, block)
     end
-    table.insert(new_blocks, block)
   end
-  
+
   -- If no content blocks were found, still need to close out properly
   if not page_break_inserted then
     table.insert(new_blocks, pandoc.RawBlock('openxml', [[
@@ -766,7 +862,8 @@ end`;
 		const instructor = (yaml['instructor'] || '').replace(/"/g, '\\"');
 		const date = (yaml['date'] || '').replace(/"/g, '\\"');
 		
-		return `-- MLA Header format
+		return `${this.luaBibHelpers()}
+-- MLA Header format
 -- Page 1: Info block (Author, Instructor, Course, Date) left-aligned + centered title
 -- Every page: Running header "LastName PageNumber" in top right (handled by reference.docx)
 
@@ -908,8 +1005,28 @@ function Pandoc(doc)
   end
   
   -- Add all original content blocks
+  local in_bib = false
   for i, block in ipairs(doc.blocks) do
-    table.insert(new_blocks, block)
+    if is_bib_heading(block) then
+      in_bib = true
+      table.insert(new_blocks, pandoc.RawBlock('openxml', string.format([[
+<w:p>
+  <w:pPr>
+    <w:pStyle w:val="Heading%d"/>
+    <w:pageBreakBefore/>
+  </w:pPr>
+  <w:r>
+    <w:t>%s</w:t>
+  </w:r>
+</w:p>]], block.level, pandoc.utils.stringify(block))))
+    elseif in_bib and block.t == "Header" then
+      in_bib = false
+      table.insert(new_blocks, block)
+    elseif in_bib and block.t == "Para" then
+      table.insert(new_blocks, bib_entry_block(block))
+    else
+      table.insert(new_blocks, block)
+    end
   end
   
   doc.blocks = new_blocks
