@@ -187,7 +187,14 @@ export default class MD2PDFPlugin extends Plugin {
 	// Get plugin folder path
 	getPluginFolder(): string {
 		const vaultPath = (this.app.vault.adapter as any).basePath;
-		return path.join(vaultPath, this.app.vault.configDir, 'plugins', this.manifest.id);
+		// manifest.dir is the folder Obsidian actually loaded us from, vault-relative.
+		// The folder name does not have to match manifest.id — an install copied from
+		// an older version still sits in a folder named 'md2pdf', and a zip from GitHub
+		// unpacks as 'obsidian-md2pdf-main'. Deriving the path from the id looks in a
+		// folder that does not exist and the reference docs come back empty.
+		const pluginDir = this.manifest.dir
+			|| path.join(this.app.vault.configDir, 'plugins', this.manifest.id);
+		return path.join(vaultPath, pluginDir);
 	}
 
 	// Get list of available reference.docx files in plugin folder
@@ -258,7 +265,7 @@ export default class MD2PDFPlugin extends Plugin {
 			if (fs.existsSync(refPath)) {
 				referenceDoc = refPath;
 			} else {
-				new Notice(`Reference doc not found: ${yaml['spacing']}.docx`);
+				new Notice(`Reference doc not found: ${refPath}`);
 				return;
 			}
 		}
@@ -269,16 +276,25 @@ export default class MD2PDFPlugin extends Plugin {
 				referenceDoc = defaultRefPath;
 			}
 		}
-		// Final fallback to any .docx in plugin folder
-		else {
+
+		// Final fallback to any .docx in plugin folder. Also covers a defaultRef that
+		// points at a file this install does not have — settings sync across machines,
+		// the .docx files do not always follow.
+		if (!referenceDoc) {
 			const availableDocs = this.getAvailableRefDocs();
 			if (availableDocs.length > 0) {
 				referenceDoc = path.join(pluginFolder, availableDocs[0] + '.docx');
 			}
 		}
-		
+
 		if (!referenceDoc || !fs.existsSync(referenceDoc)) {
-			new Notice('No reference.docx found. Please add a .docx file to the plugin folder.');
+			new Notice(`No .docx reference document found in ${pluginFolder}`);
+			console.error('md2pdf: no reference .docx in plugin folder', {
+				pluginFolder,
+				manifestDir: this.manifest.dir,
+				manifestId: this.manifest.id,
+				folderExists: fs.existsSync(pluginFolder)
+			});
 			return;
 		}
 
@@ -1134,7 +1150,9 @@ class MD2PDFSettingTab extends PluginSettingTab {
 		// Refresh button for reference docs
 		new Setting(containerEl)
 			.setName('Refresh Reference Documents')
-			.setDesc('Rescan plugin folder for .docx files')
+			.setDesc(availableDocs.length > 0
+				? `Rescan plugin folder for .docx files — scanning ${this.plugin.getPluginFolder()}`
+				: `No .docx files found in ${this.plugin.getPluginFolder()}`)
 			.addButton(btn => btn
 				.setButtonText('Refresh')
 				.onClick(() => {

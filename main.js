@@ -2840,7 +2840,8 @@ var MD2PDFPlugin = class extends import_obsidian.Plugin {
   // Get plugin folder path
   getPluginFolder() {
     const vaultPath = this.app.vault.adapter.basePath;
-    return path.join(vaultPath, this.app.vault.configDir, "plugins", this.manifest.id);
+    const pluginDir = this.manifest.dir || path.join(this.app.vault.configDir, "plugins", this.manifest.id);
+    return path.join(vaultPath, pluginDir);
   }
   // Get list of available reference.docx files in plugin folder
   getAvailableRefDocs() {
@@ -2899,7 +2900,7 @@ var MD2PDFPlugin = class extends import_obsidian.Plugin {
       if (fs.existsSync(refPath)) {
         referenceDoc = refPath;
       } else {
-        new import_obsidian.Notice(`Reference doc not found: ${yaml["spacing"]}.docx`);
+        new import_obsidian.Notice(`Reference doc not found: ${refPath}`);
         return;
       }
     } else if (this.settings.defaultRef) {
@@ -2907,14 +2908,21 @@ var MD2PDFPlugin = class extends import_obsidian.Plugin {
       if (fs.existsSync(defaultRefPath)) {
         referenceDoc = defaultRefPath;
       }
-    } else {
+    }
+    if (!referenceDoc) {
       const availableDocs = this.getAvailableRefDocs();
       if (availableDocs.length > 0) {
         referenceDoc = path.join(pluginFolder, availableDocs[0] + ".docx");
       }
     }
     if (!referenceDoc || !fs.existsSync(referenceDoc)) {
-      new import_obsidian.Notice("No reference.docx found. Please add a .docx file to the plugin folder.");
+      new import_obsidian.Notice(`No .docx reference document found in ${pluginFolder}`);
+      console.error("md2pdf: no reference .docx in plugin folder", {
+        pluginFolder,
+        manifestDir: this.manifest.dir,
+        manifestId: this.manifest.id,
+        folderExists: fs.existsSync(pluginFolder)
+      });
       return;
     }
     const formatDesc = formatType ? ` (${formatType})` : "";
@@ -3668,7 +3676,7 @@ var MD2PDFSettingTab = class extends import_obsidian.PluginSettingTab {
         await this.plugin.saveSettings();
       });
     });
-    new import_obsidian.Setting(containerEl).setName("Refresh Reference Documents").setDesc("Rescan plugin folder for .docx files").addButton((btn) => btn.setButtonText("Refresh").onClick(() => {
+    new import_obsidian.Setting(containerEl).setName("Refresh Reference Documents").setDesc(availableDocs.length > 0 ? `Rescan plugin folder for .docx files \u2014 scanning ${this.plugin.getPluginFolder()}` : `No .docx files found in ${this.plugin.getPluginFolder()}`).addButton((btn) => btn.setButtonText("Refresh").onClick(() => {
       this.display();
       new import_obsidian.Notice("Reference documents refreshed");
     }));
