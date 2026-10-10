@@ -1,9 +1,9 @@
 {
 	"id": "obsidian-md2pdf",
 	"name": "md2pdf",
-	"version": "1.2.0",
+	"version": "1.3.0",
 	"minAppVersion": "0.15.0",
-	"description": "Convert Markdown files to PDF using Pandoc and LibreOffice with flexible style (chicago/mla) and spacing document selection.",
+	"description": "Convert Markdown files to PDF using Pandoc with Typst or LibreOffice, with flexible style (chicago/mla) and spacing document selection.",
 	"author": "Charles Cisco",
 	"isDesktopOnly": true
 }
